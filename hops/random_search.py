@@ -147,26 +147,6 @@ def _prepare_func(app_id, run_id, map_fun, args_dict, local_logdir):
                 print('\n' + time_str)
                 print('-------------------------------------------------------')
                 hopshdfs.log(time_str)
-            else:
-                hdfs_exec_logdir, hdfs_appid_logdir = hopshdfs._create_directories(app_id, run_id, None, 'random_search')
-                pydoop.hdfs.dump('', os.environ['EXEC_LOGFILE'], user=hopshdfs.project_user())
-                hopshdfs._init_logger()
-                tb_hdfs_path, tb_pid = tensorboard._register(hdfs_exec_logdir, hdfs_appid_logdir, executor_num, local_logdir=local_logdir)
-                gpu_str = '\nChecking for GPUs in the environment' + devices._get_gpu_info()
-                hopshdfs.log(gpu_str)
-                print(gpu_str)
-                print('-------------------------------------------------------')
-                print('Started running task\n')
-                hopshdfs.log('Started running task')
-                task_start = datetime.datetime.now()
-                retval = map_fun()
-                task_end = datetime.datetime.now()
-                if retval:
-                    _handle_return(retval, hdfs_exec_logdir)
-                time_str = 'Finished task - took ' + util._time_diff(task_start, task_end)
-                print('\n' + time_str)
-                print('-------------------------------------------------------')
-                hopshdfs.log(time_str)
         except:
             #Always do cleanup
             _cleanup(tb_hdfs_path)
