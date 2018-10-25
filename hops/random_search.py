@@ -65,7 +65,7 @@ def _launch(sc, map_fun, args_dict, samples, local_logdir=False, name="no-name")
     nodeRDD = sc.parallelize(range(samples), samples)
 
     #Force execution on executor, since GPU is located on executor    global run_id
-    nodeRDD.foreachPartition(_prepare_func(app_id, run_id, map_fun, args_dict, local_logdir))
+    nodeRDD.foreachPartition(_prepare_func(app_id, run_id, map_fun, random_dict, local_logdir))
 
     print('Finished Experiment \n')
 
