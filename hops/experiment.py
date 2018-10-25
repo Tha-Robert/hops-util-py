@@ -265,8 +265,8 @@ def random_search(map_fun, boundary_dict, direction='max', samples=10, name='no-
 
     Args:
         :map_fun: The function to run
-        :boundary_dict: If specified will run the same function multiple times with different arguments, {'a':[1,2], 'b':[5,3]}
-         would run the function two times with arguments (1,5) and (2,3) provided that the function signature contains two arguments like *def func(a,b):*
+        :boundary_dict: dict containing hyperparameter name and corresponding boundaries.
+         A number of experiments will be run corresponding to the value *samples*, each experiment randomize a value in the boundary range for each hyperparameter.
         :direction: If set to 'max' the highest value returned will correspond to the best solution, if set to 'min' the opposite is true
         :samples: the number of random samples to evaluate for each hyperparameter given the boundaries
         :name: name of the experiment

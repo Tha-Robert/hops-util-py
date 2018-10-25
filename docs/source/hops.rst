@@ -44,6 +44,14 @@ hops\.kafka module
     :undoc-members:
     :show-inheritance:
 
+hops\.random\_search module
+---------------------------
+
+.. automodule:: hops.random_search
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 hops\.serving module
 --------------------
 
