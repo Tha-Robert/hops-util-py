@@ -17,6 +17,7 @@ from hops import hdfs as hopshdfs
 from hops import differential_evolution as diff_evo
 from hops import grid_search as gs
 from hops import launcher as launcher
+from hops import random_search as r_search
 from hops.distribute import allreduce as tf_allreduce
 from hops.distribute import parameter_server as ps
 from hops.distribute import mirrored as mirrored_impl
@@ -231,6 +232,84 @@ def launch(map_fun, args_dict=None, name='no-name', local_logdir=False, versione
         experiment_json = util._finalize_experiment(experiment_json, None, None)
 
         util._put_elastic(hopshdfs.project_name(), app_id, elastic_id, experiment_json)
+
+    except:
+        _exception_handler()
+        raise
+    finally:
+        #cleanup spark jobs
+        elastic_id +=1
+        running = False
+        sc.setJobGroup("", "")
+    return tensorboard_logdir
+
+
+def random_search(map_fun, args_dict, samples=10, name='no-name', local_logdir=False, versioned_resources=None, description=None):
+    """
+
+    *Experiment* or *Parallel Experiment*
+
+    Run an Experiment contained in *map_fun* one time with no arguments or multiple times with different arguments if
+    *args_dict* is specified.
+
+    Example usage:
+
+    >>> from hops import experiment
+    >>> grid_dict = {'learning_rate':[0.1, 0.3], 'dropout': [0.4, 0.1]}
+    >>> def train_nn(learning_rate, dropout):
+    >>>    import tensorflow
+    >>>    # code for preprocessing, training and exporting model
+    >>>    # mandatory return a value for the experiment which is registered in Experiments service
+    >>>    return network.evaluate(learning_rate, dropout)
+    >>> experiment.random_search(train_nn, grid_dict, direction='max')
+
+    Args:
+        :map_fun: The function to run
+        :args_dict: If specified will run the same function multiple times with different arguments, {'a':[1,2], 'b':[5,3]}
+         would run the function two times with arguments (1,5) and (2,3) provided that the function signature contains two arguments like *def func(a,b):*
+        :name: name of the experiment
+        :local_logdir: True if *tensorboard.logdir()* should be in the local filesystem, otherwise it is in HDFS
+        :versioned_resources: A list of HDFS paths of resources to version with this experiment
+        :description: A longer description for the experiment
+
+    Returns:
+        HDFS path in your project where the experiment is stored
+
+    """
+
+    num_ps = util.num_param_servers()
+    assert num_ps == 0, "number of parameter servers should be 0"
+
+    global running
+    if running:
+        raise RuntimeError("An experiment is currently running. Please call experiment.end() to stop it.")
+
+    try:
+        global app_id
+        global experiment_json
+        global elastic_id
+        running = True
+
+        sc = util._find_spark().sparkContext
+        app_id = str(sc.applicationId)
+
+        r_search.run_id = r_search.run_id + 1
+
+        versioned_path = util._version_resources(versioned_resources, r_search._get_logdir(app_id))
+
+        experiment_json = None
+
+        experiment_json = util._populate_experiment(sc, name, 'experiment', 'random_search', r_search._get_logdir(app_id), json.dumps(args_dict), versioned_path, description)
+
+        util._version_resources(versioned_resources, r_search._get_logdir(app_id))
+
+        util._put_elastic(hopshdfs.project_name(), app_id, elastic_id, experiment_json)
+
+        retval, tensorboard_logdir = r_search._launch(sc, map_fun, args_dict, samples, local_logdir)
+
+        experiment_json = util._finalize_experiment(experiment_json, None, retval)
+        util._put_elastic(hopshdfs.project_name(), app_id, elastic_id, experiment_json)
+        return tensorboard_logdir
 
     except:
         _exception_handler()
