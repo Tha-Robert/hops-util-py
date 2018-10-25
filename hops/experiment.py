@@ -249,7 +249,7 @@ def random_search(map_fun, boundary_dict, samples=10, name='no-name', local_logd
 
     *Parallel Experiment*
 
-    Run an Experiment contained in *map_fun* with a configured number of *samples* for each randomized hyperparameter contained in *boundary_dict*
+    Run an Experiment contained in *map_fun* with a configured number of random *samples* for each hyperparameter contained in *boundary_dict*
 
     Example usage:
 
@@ -260,7 +260,7 @@ def random_search(map_fun, boundary_dict, samples=10, name='no-name', local_logd
     >>>    # code for preprocessing, training and exporting model
     >>>    # mandatory return a value for the experiment which is registered in Experiments service
     >>>    return network.evaluate(learning_rate, layers, dropout)
-    >>> experiment.random_search(train_nn, grid_dict, samples=14 direction='max')
+    >>> experiment.random_search(train_nn, boundary_dict, samples=14 direction='max')
 
     Args:
         :map_fun: The function to run
