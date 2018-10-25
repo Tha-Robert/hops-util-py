@@ -244,29 +244,29 @@ def launch(map_fun, args_dict=None, name='no-name', local_logdir=False, versione
     return tensorboard_logdir
 
 
-def random_search(map_fun, args_dict, samples=10, name='no-name', local_logdir=False, versioned_resources=None, description=None):
+def random_search(map_fun, boundary_dict, samples=10, name='no-name', local_logdir=False, versioned_resources=None, description=None):
     """
 
-    *Experiment* or *Parallel Experiment*
+    *Parallel Experiment*
 
-    Run an Experiment contained in *map_fun* one time with no arguments or multiple times with different arguments if
-    *args_dict* is specified.
+    Run an Experiment contained in *map_fun* with a configured number of *samples* for each randomized hyperparameter contained in *boundary_dict*
 
     Example usage:
 
     >>> from hops import experiment
-    >>> grid_dict = {'learning_rate':[0.1, 0.3], 'dropout': [0.4, 0.1]}
-    >>> def train_nn(learning_rate, dropout):
+    >>> boundary_dict = {'learning_rate': [0.1, 0.3], 'layers': [2, 9], 'dropout': [0.1,0.9]}
+    >>> def train_nn(learning_rate, layers, dropout):
     >>>    import tensorflow
     >>>    # code for preprocessing, training and exporting model
     >>>    # mandatory return a value for the experiment which is registered in Experiments service
-    >>>    return network.evaluate(learning_rate, dropout)
-    >>> experiment.random_search(train_nn, grid_dict, direction='max')
+    >>>    return network.evaluate(learning_rate, layers, dropout)
+    >>> experiment.random_search(train_nn, grid_dict, samples=14 direction='max')
 
     Args:
         :map_fun: The function to run
-        :args_dict: If specified will run the same function multiple times with different arguments, {'a':[1,2], 'b':[5,3]}
+        :boundary_dict: If specified will run the same function multiple times with different arguments, {'a':[1,2], 'b':[5,3]}
          would run the function two times with arguments (1,5) and (2,3) provided that the function signature contains two arguments like *def func(a,b):*
+        :samples: the number of random samples to evaluate for each hyperparameter given the boundaries
         :name: name of the experiment
         :local_logdir: True if *tensorboard.logdir()* should be in the local filesystem, otherwise it is in HDFS
         :versioned_resources: A list of HDFS paths of resources to version with this experiment
@@ -299,13 +299,13 @@ def random_search(map_fun, args_dict, samples=10, name='no-name', local_logdir=F
 
         experiment_json = None
 
-        experiment_json = util._populate_experiment(sc, name, 'experiment', 'random_search', r_search._get_logdir(app_id), json.dumps(args_dict), versioned_path, description)
+        experiment_json = util._populate_experiment(sc, name, 'experiment', 'random_search', r_search._get_logdir(app_id), json.dumps(boundary_dict), versioned_path, description)
 
         util._version_resources(versioned_resources, r_search._get_logdir(app_id))
 
         util._put_elastic(hopshdfs.project_name(), app_id, elastic_id, experiment_json)
 
-        retval, tensorboard_logdir = r_search._launch(sc, map_fun, args_dict, samples, local_logdir)
+        retval, tensorboard_logdir = r_search._launch(sc, map_fun, boundary_dict, samples, local_logdir)
 
         experiment_json = util._finalize_experiment(experiment_json, None, retval)
         util._put_elastic(hopshdfs.project_name(), app_id, elastic_id, experiment_json)
