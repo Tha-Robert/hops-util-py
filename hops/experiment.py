@@ -244,12 +244,13 @@ def launch(map_fun, args_dict=None, name='no-name', local_logdir=False, versione
     return tensorboard_logdir
 
 
-def random_search(map_fun, boundary_dict, samples=10, name='no-name', local_logdir=False, versioned_resources=None, description=None):
+def random_search(map_fun, boundary_dict, direction='max', samples=10, name='no-name', local_logdir=False, versioned_resources=None, description=None):
     """
 
     *Parallel Experiment*
 
     Run an Experiment contained in *map_fun* with a configured number of random *samples* for each hyperparameter contained in *boundary_dict*
+    Return a metric corresponding to how 'good' the given hyperparameter combination is.
 
     Example usage:
 
@@ -266,6 +267,7 @@ def random_search(map_fun, boundary_dict, samples=10, name='no-name', local_logd
         :map_fun: The function to run
         :boundary_dict: If specified will run the same function multiple times with different arguments, {'a':[1,2], 'b':[5,3]}
          would run the function two times with arguments (1,5) and (2,3) provided that the function signature contains two arguments like *def func(a,b):*
+        :direction: If set to 'max' the highest value returned will correspond to the best solution, if set to 'min' the opposite is true
         :samples: the number of random samples to evaluate for each hyperparameter given the boundaries
         :name: name of the experiment
         :local_logdir: True if *tensorboard.logdir()* should be in the local filesystem, otherwise it is in HDFS
