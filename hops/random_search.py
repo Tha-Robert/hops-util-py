@@ -12,11 +12,12 @@ import threading
 import six
 import datetime
 import os
+import random
 
 run_id = 0
 
 
-def _launch(sc, map_fun, args_dict, local_logdir=False, name="no-name"):
+def _launch(sc, map_fun, args_dict, samples, local_logdir=False, name="no-name"):
     """
 
     Args:
@@ -33,20 +34,35 @@ def _launch(sc, map_fun, args_dict, local_logdir=False, name="no-name"):
 
     app_id = str(sc.applicationId)
 
+    arg_lists = list(args_dict.values())
+    for i in range(len(arg_lists)):
+       if len(arg_lists[i]) != 2:
+           raise ValueError('Boundary list must contain exactly two elements, [lower_bound, upper_bound] for each hyperparameter')
 
-    if args_dict == None:
-        num_executions = 1
-    else:
-        arg_lists = list(args_dict.values())
-        currentLen = len(arg_lists[0])
-        for i in range(len(arg_lists)):
-            if currentLen != len(arg_lists[i]):
-                raise ValueError('Length of each function argument list must be equal')
-            num_executions = len(arg_lists[i])
+    hp_names = args_dict.keys()
+
+    random_dict = {}
+    for hp in hp_names:
+        lower_bound = args_dict[hp][0]
+        upper_bound = args_dict[hp][0]
+
+        random_values = []
+
+        if type(lower_bound) == int and type(upper_bound) == int:
+            for i in range(samples):
+                random_values[i] = random.randint(lower_bound, upper_bound)
+        elif type(lower_bound) == float and type(upper_bound) == float:
+            for i in range(samples):
+                random_values[i] = random.uniform(lower_bound, upper_bound)
+        else:
+            raise ValueError('Only float and int is currently supported')
+
+        random_dict[hp] = random_values
+
 
     sc.setJobGroup("Random Search", "{} | Hyperparameter Optimization".format(name))
     #Each TF task should be run on 1 executor
-    nodeRDD = sc.parallelize(range(num_executions), num_executions)
+    nodeRDD = sc.parallelize(range(samples), samples)
 
     #Force execution on executor, since GPU is located on executor    global run_id
     nodeRDD.foreachPartition(_prepare_func(app_id, run_id, map_fun, args_dict, local_logdir))
