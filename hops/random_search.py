@@ -1,5 +1,5 @@
 """
-Simple experiment implementation
+Random Search implementation
 """
 
 from hops import util
