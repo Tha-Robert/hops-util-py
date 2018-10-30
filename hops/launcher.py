@@ -76,6 +76,46 @@ def _get_logdir(app_id):
     return hopshdfs._get_experiments_dir() + '/' + app_id + '/launcher/run.' +  str(run_id)
 
 
+def _dump_to_logstash():
+    """
+    Returns:
+    """
+    import time
+    import datetime
+
+    # Add number here
+    logger = util._get_logger("executor-print-logger-%s" % os.environ['CONTAINER_ID'])
+
+    if hasattr(logger, "_no_logging"):
+        return
+
+    t = threading.currentThread()
+    p = 0
+    while getattr(t, "do_run", True):
+        with open(os.path.join(os.environ['LOG_DIRS'].split(',')[0], "stderr")) as f:
+            f.seek(p)
+            for line in f:
+                line = line.rstrip("\n")
+                if line:
+                    if not util.log(line, level='info', logger=logger, thread=t.name):
+                        # Exit loop if we cant log
+                        break
+                time.sleep(.002)
+            p = f.tell()
+        time.sleep(10)
+
+    # We are done get the last out, before quiting
+    with open(os.path.join(os.environ['LOG_DIRS'].split(',')[0], "stderr")) as f:
+            f.seek(p)
+            for line in f:
+                line = line.rstrip("\n")
+                if line:
+                    if not util.log(line, level='info', logger=logger, thread=t.name):
+                        # Exit loop if we cant log
+                        break
+                time.sleep(.002)
+            p = f.tell()
+
 #Helper to put Spark required parameter iter in function signature
 def _prepare_func(app_id, run_id, map_fun, args_dict, local_logdir):
     """
@@ -107,9 +147,10 @@ def _prepare_func(app_id, run_id, map_fun, args_dict, local_logdir):
         tb_hdfs_path = ''
         hdfs_exec_logdir = ''
 
-        t = threading.Thread(target=devices._print_periodic_gpu_utilization)
-        if devices.get_num_gpus() > 0:
-            t.start()
+        t = util.setup_bg_thread(devices._print_periodic_gpu_utilization, name="log_gpu_util", condition=devices.get_num_gpus() > 0)
+
+        log_thread = util.setup_bg_thread(_dump_to_logstash, name="send_print_to_logstash")
+        util.log("Executor started")
 
         try:
             #Arguments
@@ -167,12 +208,14 @@ def _prepare_func(app_id, run_id, map_fun, args_dict, local_logdir):
                 print('\n' + time_str)
                 print('-------------------------------------------------------')
                 hopshdfs.log(time_str)
-        except:
+        except Exception as e:
+
             #Always do cleanup
             _cleanup(tb_hdfs_path)
-            if devices.get_num_gpus() > 0:
-                t.do_run = False
-                t.join()
+
+            util.teardown_bg_thread(t)
+            util.teardown_bg_thread(log_thread)
+            util.log(util.format_traceback(e), level="error")
             raise
         finally:
             try:
@@ -183,10 +226,8 @@ def _prepare_func(app_id, run_id, map_fun, args_dict, local_logdir):
                 pass
 
         _cleanup(tb_hdfs_path)
-        if devices.get_num_gpus() > 0:
-            t.do_run = False
-            t.join()
-
+        util.teardown_bg_thread(t)
+        util.teardown_bg_thread(log_thread)
     return _wrapper_fun
 
 def _cleanup(tb_hdfs_path):

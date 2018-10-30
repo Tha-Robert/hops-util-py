@@ -551,8 +551,8 @@ def open_file(hdfs_path, project=None, flags='rw', buff_size=0):
     """
     if project == None:
         project = project_name()
-    hdfs_path = _expand_path(hdfs_path, project)
-    fs_handle = hdfs.get_fs()
+    hdfs_path = _expand_path(hdfs_path, project, exists=False)
+    fs_handle = get_fs()
     fd = fs_handle.open_file(hdfs_path, flags, buff_size=buff_size)
     return fd
 

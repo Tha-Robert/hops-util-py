@@ -18,6 +18,8 @@ from hops import version
 from pyspark.sql import SparkSession
 from hops import constants
 import ssl
+import threading
+import re
 
 #! Needed for hops library backwards compatability
 try:
@@ -390,6 +392,142 @@ def _convert_to_dict(best_param):
         best_param_dict[hp[0]] = hp[1]
 
     return best_param_dict
+
+def _get_logger(name):
+        import logging
+        import logstash
+        import socket
+        import re
+
+        logger = logging.getLogger(name)
+        if len(logger.handlers) > 0 or hasattr(logger, "_no_logging"):
+            return logger
+
+        # Get from user YARN_IDENT_STRING
+        # Figure out where the spark log4j conf is to get info
+        log4j_conf = os.path.join(os.environ["HADOOP_LOG_DIR"], "..", "..",
+                                  "spark", "conf", "log4j.properties")
+        log4j_content = open(log4j_conf, "rb").read()
+        # We use port 5000 not 3456
+        #port_re = re.search("^log4j.appender.tcp.Port=(\d+)",log4j_content, re.M)
+        host_re = re.search("^log4j.appender.tcp.RemoteHost=([^ \t]+)[ \t]*$", log4j_content, re.M)
+        # log4j.appender.tcp.Port=3456
+        # log4j.appender.tcp.RemoteHost=10.0.0.9
+
+        if not host_re:
+            result = 1
+        else:
+            host = socket.gethostbyname(host_re.group(1))
+            #port = int(port_re.group(1))
+            #5000
+            port = 5000
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            result = sock.connect_ex((host,port))
+
+        if result == 0:
+            # init logger
+            logger.setLevel(logging.INFO)
+            # TCP
+            logger.addHandler(logstash.TCPLogstashHandler(host, port, version=1))
+            # UDP
+            # logger.addHandler(logstash.LogstashHandler(host, port, version=1))
+            log('Logstash logger started!', logger=logger)
+        else:
+            print("No logstash logger found")
+            logger._no_logging = True
+
+        return logger
+
+
+def log(line, level='info', logger=None, thread="default"):
+    # For logging to work you need to add this to logstash and restart the service
+    # input {
+    #   tcp {
+    #     port => 5000
+    #     codec => json
+    #   }
+    # }
+    #
+    # Will do normal printing if all fails
+
+    # add extra field to logstash message
+    if logger is not None:
+        mlogger = logger
+    else:
+        mlogger = _get_logger("executor-logger-%s" % os.environ['CONTAINER_ID'])
+        if not mlogger:
+            return
+
+    if hasattr(mlogger, "_no_logging"):
+        print(line)
+        return True
+
+    import time
+    import datetime
+
+    extra = {
+        'application': [hdfs.project_name(), "jupyter", "notebook", "executor128"],
+        'timestamp'  : datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+        'priority'   : level
+        #'thread'     : thread
+    }
+    getattr(mlogger, level)('%s', line, extra=extra)
+    return True
+
+def setup_bg_thread(func, name, condition=True):
+    t = threading.Thread(target=func, name=name)
+    if condition:
+        t.start()
+    return t
+
+def teardown_bg_thread(t):
+    t.do_run = False
+    if t.isAlive():
+        t.join()
+
+def format_traceback(e):
+    import types
+    import traceback
+    import sys
+    from funcsigs import signature
+
+    def log_to_str(v):
+        if isinstance(v, types.StringType):
+            return ''.join(["'", v.replace('\n', '\\n'), "'"])
+        else:
+            try:
+                return str(v).replace('\n', '\\n')
+            except:
+                return '<ERROR: CANNOT PRINT>'
+
+    frame = sys.exc_info()[2]
+    formattedTb = traceback.format_tb(frame)
+    exception_string = "Globals:\n"
+    for k,v in frame.tb_frame.f_globals.items():
+        exception_string += "{:>4}{:<20}:{}{:<.100}\n".format("", k, " ", log_to_str(v))
+    exception_string += "Traceback:\n"
+    while frame:
+        this_frame_tb = formattedTb.pop(0)
+        exception_string += this_frame_tb
+        call_re_search = re.search("^[\t ]+(.+)\(.*?\)$", this_frame_tb, re.M)
+        co_name = frame.tb_frame.f_code.co_name
+        if call_re_search and call_re_search.group(1) in frame.tb_frame.f_locals.keys() + frame.tb_frame.f_globals.keys():
+            call_name = call_re_search.group(1)
+            if call_name in frame.tb_frame.f_locals:
+                if call_name != frame.tb_frame.f_locals[call_name].__name__:
+                    exception_string = exception_string[:-1]
+                    exception_string += " => {}{}\n".format(frame.tb_frame.f_locals[call_name].__name__, str(signature(frame.tb_frame.f_locals[call_name])))
+            elif co_name in frame.tb_frame.f_globals:
+                if call_name != frame.tb_frame.f_globals[call_name].__name__:
+                    exception_string = exception_string[:-1]
+                    exception_string += " => {}{}\n".format(frame.tb_frame.f_globals[call_name].__name__, str(signature(frame.tb_frame.f_globals[call_name])))
+        exception_string += "    Locals:\n"
+        for k,v in frame.tb_frame.f_locals.items():
+            exception_string += "{:<8}{:<20}:{}{:<.100}\n".format("", k, " ", log_to_str(v))
+        frame = frame.tb_next
+
+    exception_string += 'Exception thrown, {}: {}\n'.format(type(e), str(e))
+    return exception_string
 
 def _find_spark():
     """
