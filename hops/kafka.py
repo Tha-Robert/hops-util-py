@@ -100,20 +100,6 @@ def get_kafka_default_config():
     }
     return default_config
 
-def _prepare_rest_appservice_json_request():
-    """
-    Prepares a REST JSON Request to Hopsworks APP-service
-
-    Returns:
-        a dict with keystore cert bytes and password string
-    """
-    key_store_pwd = tls.get_key_store_pwd()
-    key_store_cert = tls.get_key_store_cert()
-    json_contents = {}
-    json_contents[constants.REST_CONFIG.JSON_KEYSTOREPWD] = key_store_pwd
-    json_contents[constants.REST_CONFIG.JSON_KEYSTORE] = key_store_cert.decode("latin-1") # raw bytes is not serializable by JSON -_-
-    return json_contents
-
 def get_schema(topic, version_id=1):
     """
     Gets the Avro schema for a particular Kafka topic and its version.
@@ -125,7 +111,7 @@ def get_schema(topic, version_id=1):
     Returns:
         Avro schema as a string object in JSON format
     """
-    json_contents = _prepare_rest_appservice_json_request()
+    json_contents = tls._prepare_rest_appservice_json_request()
     json_contents[constants.REST_CONFIG.JSON_SCHEMA_TOPICNAME] = topic
     json_contents[constants.REST_CONFIG.JSON_SCHEMA_VERSION] = version_id
     json_embeddable = json.dumps(json_contents)
