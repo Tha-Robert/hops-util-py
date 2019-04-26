@@ -46,7 +46,7 @@ def _launch(sc, map_fun, args_dict=None, local_logdir=False, name="no-name"):
 
     sc.setJobGroup("Launcher", "{} | Running experiment".format(name))
     #Each TF task should be run on 1 executor
-    nodeRDD = sc.parallelize(range(num_executions), num_executions)
+    nodeRDD = sc.parallelize(list(range(num_executions)), num_executions)
 
     #Force execution on executor, since GPU is located on executor    global run_id
     nodeRDD.foreachPartition(_prepare_func(app_id, run_id, map_fun, args_dict, local_logdir))

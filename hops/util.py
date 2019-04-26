@@ -186,7 +186,7 @@ def grid_params(dict):
     Returns:
         A new dictionary with a grid of all the possible hyperparameter combinations
     """
-    keys = dict.keys()
+    keys = list(dict.keys())
     val_arr = []
     for key in keys:
         val_arr.append(dict[key])
@@ -407,7 +407,7 @@ def _get_logger(name):
         # Figure out where the spark log4j conf is to get info
         log4j_conf = os.path.join(os.environ["HADOOP_LOG_DIR"], "..", "..",
                                   "spark", "conf", "log4j.properties")
-        log4j_content = open(log4j_conf, "rb").read()
+        log4j_content = open(log4j_conf, "rb").read().decode("UTF-8")
         # We use port 5000 not 3456
         #port_re = re.search("^log4j.appender.tcp.Port=(\d+)",log4j_content, re.M)
         host_re = re.search("^log4j.appender.tcp.RemoteHost=([^ \t]+)[ \t]*$", log4j_content, re.M)
@@ -492,7 +492,7 @@ def format_traceback(e):
     from funcsigs import signature
 
     def log_to_str(v):
-        if isinstance(v, types.StringType):
+        if isinstance(v, bytes):
             return ''.join(["'", v.replace('\n', '\\n'), "'"])
         else:
             try:
@@ -503,7 +503,7 @@ def format_traceback(e):
     frame = sys.exc_info()[2]
     formattedTb = traceback.format_tb(frame)
     exception_string = "Globals:\n"
-    for k,v in frame.tb_frame.f_globals.items():
+    for k,v in list(frame.tb_frame.f_globals.items()):
         exception_string += "{:>4}{:<20}:{}{:<.100}\n".format("", k, " ", log_to_str(v))
     exception_string += "Traceback:\n"
     while frame:
@@ -511,7 +511,7 @@ def format_traceback(e):
         exception_string += this_frame_tb
         call_re_search = re.search("^[\t ]+(.+)\(.*?\)$", this_frame_tb, re.M)
         co_name = frame.tb_frame.f_code.co_name
-        if call_re_search and call_re_search.group(1) in frame.tb_frame.f_locals.keys() + frame.tb_frame.f_globals.keys():
+        if call_re_search and call_re_search.group(1) in list(frame.tb_frame.f_locals.keys()) + list(frame.tb_frame.f_globals.keys()):
             call_name = call_re_search.group(1)
             if call_name in frame.tb_frame.f_locals:
                 if call_name != frame.tb_frame.f_locals[call_name].__name__:
@@ -522,7 +522,7 @@ def format_traceback(e):
                     exception_string = exception_string[:-1]
                     exception_string += " => {}{}\n".format(frame.tb_frame.f_globals[call_name].__name__, str(signature(frame.tb_frame.f_globals[call_name])))
         exception_string += "    Locals:\n"
-        for k,v in frame.tb_frame.f_locals.items():
+        for k,v in list(frame.tb_frame.f_locals.items()):
             exception_string += "{:<8}{:<20}:{}{:<.100}\n".format("", k, " ", log_to_str(v))
         frame = frame.tb_next
 

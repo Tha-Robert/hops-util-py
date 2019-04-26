@@ -49,7 +49,7 @@ def _get_cert_pw():
         key_store_pwd = f.read()
 
     # remove special characters (due to bug in password materialized, should not be necessary when the bug is fixed)
-    key_store_pwd = "".join(list(filter(lambda x: x in string.printable and not x == "@", key_store_pwd)))
+    key_store_pwd = "".join(list([x for x in key_store_pwd if x in string.printable and not x == "@"]))
     return key_store_pwd
 
 
@@ -131,7 +131,7 @@ def _convert_jks_to_pem(jks_path, keystore_pw):
     ca_certs = ""
 
     # Convert private keys and their certificates into PEM format and append to string
-    for alias, pk in ks.private_keys.items():
+    for alias, pk in list(ks.private_keys.items()):
         if pk.algorithm_oid == jks.util.RSA_ENCRYPTION_OID:
             private_keys = private_keys + _bytes_to_pem_str(pk.pkey, "RSA PRIVATE KEY")
         else:
@@ -141,7 +141,7 @@ def _convert_jks_to_pem(jks_path, keystore_pw):
             private_keys_certs = private_keys_certs + _bytes_to_pem_str(c[1], "CERTIFICATE")
 
     # Convert CA Certificates into PEM format and append to string
-    for alias, c in ks.certs.items():
+    for alias, c in list(ks.certs.items()):
         ca_certs = ca_certs + _bytes_to_pem_str(c.cert, "CERTIFICATE")
     return private_keys_certs, private_keys, ca_certs
 

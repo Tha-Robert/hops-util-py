@@ -78,13 +78,13 @@ def _execute_all(population_dict, name="no-name"):
     """
     initial_pop = copy.deepcopy(population_dict)
 
-    number_hp_combinations=[len(v) for v in population_dict.values()][0]
+    number_hp_combinations=[len(v) for v in list(population_dict.values())][0]
     # directory for current generation
 
 
     # Do not run hyperparameter combinations that are duplicated
     # Find all duplicates and delete them
-    keys = population_dict.keys()
+    keys = list(population_dict.keys())
     i=0
     while i < number_hp_combinations:
         duplicate_entries = _duplicate_entry(i, keys, population_dict, number_hp_combinations)
@@ -94,13 +94,13 @@ def _execute_all(population_dict, name="no-name"):
                 for key in keys:
                     population_dict[key].pop(index)
             i=0
-            number_hp_combinations = [len(v) for v in population_dict.values()][0]
+            number_hp_combinations = [len(v) for v in list(population_dict.values())][0]
         else:
             i+=1
 
     tensorboard_hdfs_logdir = _evolutionary_launch(spark_session, objective_function, population_dict, name=name)
 
-    return _get_all_accuracies(tensorboard_hdfs_logdir, initial_pop, [len(v) for v in initial_pop.values()][0])
+    return _get_all_accuracies(tensorboard_hdfs_logdir, initial_pop, [len(v) for v in list(initial_pop.values())][0])
 
 
 def _duplicate_entry(i, keys, population, len):
@@ -642,7 +642,7 @@ def _evolutionary_launch(spark_session, map_fun, args_dict=None, name="no-name")
             num_executions = len(arg_lists[i])
 
     #Each TF task should be run on 1 executor
-    nodeRDD = sc.parallelize(range(num_executions), num_executions)
+    nodeRDD = sc.parallelize(list(range(num_executions)), num_executions)
 
     #Force execution on executor, since GPU is located on executor
     global generation_id

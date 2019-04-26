@@ -45,7 +45,7 @@ def _grid_launch(sc, map_fun, args_dict, direction='max', local_logdir=False, na
         num_executions = len(arg_lists[i])
 
     #Each TF task should be run on 1 executor
-    nodeRDD = sc.parallelize(range(num_executions), num_executions)
+    nodeRDD = sc.parallelize(list(range(num_executions)), num_executions)
 
     #Make SparkUI intuitive by grouping jobs
     sc.setJobGroup("Grid Search", "{} | Hyperparameter Optimization".format(name))
