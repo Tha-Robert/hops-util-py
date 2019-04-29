@@ -432,8 +432,9 @@ def _get_logger(name):
             # UDP
             # logger.addHandler(logstash.LogstashHandler(host, port, version=1))
             log('Logstash logger started!', logger=logger)
+            print("hops-util: Logstash logger started!")
         else:
-            print("No logstash logger found")
+            print("hops-util: No logstash logger found")
             logger._no_logging = True
 
         return logger
@@ -454,9 +455,14 @@ def log(line, level='info', logger=None, thread="default"):
     if logger is not None:
         mlogger = logger
     else:
+        # Maybe needs to add executor here also if we have multiple
         mlogger = _get_logger("executor-logger-%s" % os.environ['CONTAINER_ID'])
         if not mlogger:
+            print("Logger error returned None")
             return
+        if hasattr(mlogger, "_no_logging"):
+            print(line)
+            return True
 
     if hasattr(mlogger, "_no_logging"):
         print(line)

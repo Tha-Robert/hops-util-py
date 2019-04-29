@@ -151,6 +151,7 @@ def _prepare_func(app_id, run_id, map_fun, args_dict, local_logdir):
 
         log_thread = util.setup_bg_thread(_dump_to_logstash, name="send_print_to_logstash")
         util.log("Executor started")
+        print("hops-util: Executor started")
 
         try:
             #Arguments
