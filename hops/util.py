@@ -369,11 +369,13 @@ def _version_resources(versioned_resources, rundir):
     versioned_paths = []
     for hdfs_resource in versioned_resources:
         if pydoop.hdfs.path.exists(hdfs_resource):
+            log("Versoning resource '%s'" % hdfs_resource)
             pyhdfs_handle.copy(hdfs_resource, pyhdfs_handle, rundir)
             path, filename = os.path.split(hdfs_resource)
             versioned_paths.append(rundir.replace(endpoint_prefix, '') + '/' + filename)
         else:
-            raise Exception('Could not find resource in specified path: ' + hdfs_resource)
+            log("Resource not found '%s'" % hdfs_resource, level='warning')
+            #raise Exception('Could not find resource in specified path: ' + hdfs_resource)
 
     return ', '.join(versioned_paths)
 
