@@ -432,7 +432,7 @@ def _get_logger(name):
             # UDP
             # logger.addHandler(logstash.LogstashHandler(host, port, version=1))
             log('Logstash logger started!', logger=logger)
-            print("hops-util: Logstash logger started!")
+            #print("hops-util: Logstash logger started!")
         else:
             print("hops-util: No logstash logger found")
             logger._no_logging = True
@@ -472,7 +472,7 @@ def log(line, level='info', logger=None, thread="default"):
     import datetime
 
     extra = {
-        'application': [hdfs.project_name(), "jupyter", "notebook", "executor128"],
+        'application': [hdfs.project_name().lower(), "jupyter", "notebook", "executor128"],
         'timestamp'  : datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         'priority'   : level
         #'thread'     : thread
