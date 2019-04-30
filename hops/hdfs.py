@@ -235,7 +235,7 @@ def copy_to_hdfs(local_path, relative_hdfs_path, overwrite=False, project=None):
     else:
         full_local = os.getcwd() + '/' + local_path
 
-    hdfs_path = _expand_path(relative_hdfs_path, project)
+    hdfs_path = _expand_path(relative_hdfs_path, project, exists=False)
 
     if overwrite:
         hdfs_handle = get()

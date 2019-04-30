@@ -217,11 +217,11 @@ def launch(map_fun, args_dict=None, name='no-name', local_logdir=False, versione
         else:
             experiment_json = util._populate_experiment(sc, name, 'experiment', 'launcher', launcher._get_logdir(app_id), None, versioned_path, description)
 
-        util._version_resources(versioned_resources, launcher._get_logdir(app_id))
-
         util._put_elastic(hopshdfs.project_name(), app_id, elastic_id, experiment_json)
 
         retval, tensorboard_logdir = launcher._launch(sc, map_fun, args_dict, local_logdir)
+
+        util._version_resources(versioned_resources, launcher._get_logdir(app_id))
 
         if retval:
             experiment_json = util._finalize_experiment(experiment_json, None, retval)
